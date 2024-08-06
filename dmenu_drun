@@ -1,0 +1,36 @@
+#!/bin/bash
+
+directories=(
+    "/usr/share/applications"
+    "/usr/local/share/applications"
+    "$HOME/.local/share/applications"
+)
+
+apps=()
+for dir in "${directories[@]}"; do
+    if [ -d "$dir" ]; then
+        while IFS= read -r -d '' file; do
+            name=$(grep -m 1 '^Name=' "$file" | cut -d '=' -f 2-)
+            if [ -n "$name" ]; then
+                apps+=("$name:$file")
+            fi
+        done < <(find "$dir" -type f -name "*.desktop" -print0)
+    fi
+done
+
+if [ ${#apps[@]} -eq 0 ]; then
+    echo "No applications found."
+    exit 1
+fi
+
+selection=$(printf '%s\n' "${apps[@]}" | cut -d ':' -f 1 | dmenu "$@")
+#-i -p "Select application:"
+selected_file=$(printf '%s\n' "${apps[@]}" | grep "^$selection:" | cut -d ':' -f 2-)
+
+if [ -n "$selected_file" ]; then
+    #change gtk-launch if you want another launcher
+    gtk-launch "$(basename "$selected_file" .desktop)"
+else
+    echo "Application not found."
+    exit 1
+fi
